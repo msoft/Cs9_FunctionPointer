@@ -5,15 +5,10 @@
 
 #pragma once
 
-#ifndef NATIVECALLEE_EXPORTS
-#define NATIVECALLEE_API __declspec(dllexport)
-#else
-#define NATIVECALLEE_API __declspec(dllimport)
-#endif
-
-extern "C" NATIVECALLEE_API void* GetStaticFunctionPointer();
-extern "C" NATIVECALLEE_API int MultiplyWithFunctionPointer(int arg1, int arg2, int(*multiplyFcn)(int, int));
-extern "C" NATIVECALLEE_API int Multiply(int arg1, int arg2);
+extern "C" __declspec(dllexport) void* GetMultiplyFunctionPointer();
+extern "C" __declspec(dllexport) int MultiplyWithFunctionPointer(int arg1, int arg2, int(*multiplyFcn)(int, int));
+extern "C" __declspec(dllexport) int Multiply(int arg1, int arg2);
+extern "C" __declspec(dllexport) void PerformBenchmarkWithFunctionPointer(int loopCount, int(*multiplyFcn)(int, int));
 
 class NativeCallee
 {

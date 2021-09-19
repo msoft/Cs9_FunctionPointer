@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,81 +10,161 @@ namespace FunctionPointerTests
 {
 	public unsafe class Benchmark
 	{
-		private MultiplicationBenchmark multiplicationBenchmark;
-		private delegate*<int, int, int> multiplyPointer;
-		private MultiplicationBenchmark.managedDelegate functionDelegate;
-		private delegate* unmanaged<int, int, int> multiplyStaticFunctionPointer;
+		private readonly MultiplyClass multiplyClass;
+
+		private delegate int multiplyDelegate(int arg1, int arg2); // Définition du delegate
+		private readonly multiplyDelegate multiplyManagedDelegate;
+
+		private readonly delegate*<int, int, int> multiplyManagedPointer;
+		private readonly delegate* unmanaged<int, int, int> multiplyUnmanagedPointer;
+
+		[DllImport("CalledNativeDll.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+		public extern static delegate* unmanaged<int, int, int> GetMultiplyFunctionPointer();
 
 		private const int loopCount = 800000;
 
 		public Benchmark()
 		{
-			this.multiplicationBenchmark = new MultiplicationBenchmark();
-			this.multiplyPointer = &DllImportExample.Multiply;
-			this.functionDelegate = MultiplicationBenchmark.Multiply;
-			this.multiplyStaticFunctionPointer = DllImportExample.GetStaticFunctionPointer();
+			this.multiplyClass = new MultiplyClass();
+			this.multiplyManagedDelegate = this.multiplyClass.Multiply;
+			this.multiplyManagedPointer = &Multiply;
+			this.multiplyUnmanagedPointer = GetMultiplyFunctionPointer();
 		}
 
 		[Benchmark]
-		public int PInvoke()
+		public void InstanceFunctionCall()
 		{
-			int value = 1;
+			var firstArray = new int[] { 23, 87, 51, 98, 29, 75, 93, 48, 24, 83, 47, 38, 62, 22, 97, 15, 52, 41, 74, 13 };
+			var secondArray = firstArray.Reverse().ToArray();
+
+			int arrayLength = firstArray.Length;
+			int value = 0;
+			int offset = 0;
+			bool add = true;
 			for (int i = 0; i < loopCount; i++)
 			{
-				value = DllImportExample.Multiply(value, 2);
-				if (value > Int32.MaxValue || value < 0)
-					value = 1;
+				for (int j = 0; j < arrayLength; j++)
+				{
+					int index = (offset + j) % arrayLength;
+					int multiplicationResult = this.multiplyClass.Multiply(firstArray[index], secondArray[index]);
+					if (add)
+						value += multiplicationResult;
+					else
+						value -= multiplicationResult;
+
+					add = !add;
+				}
+
+				offset++;
 			}
 
-			return value;
 		}
 
 		[Benchmark]
-		public void NormalCall()
+		public void ManagedDelegateCall()
 		{
-			int value = 1;
+			var firstArray = new int[] { 23, 87, 51, 98, 29, 75, 93, 48, 24, 83, 47, 38, 62, 22, 97, 15, 52, 41, 74, 13 };
+			var secondArray = firstArray.Reverse().ToArray();
+
+			int arrayLength = firstArray.Length;
+			int value = 0;
+			int offset = 0;
+			bool add = true;
 			for (int i = 0; i < loopCount; i++)
 			{
-				value = MultiplicationBenchmark.Multiply(value, 2);
-				if (value > Int32.MaxValue || value < 0)
-					value = 1;
+				for (int j = 0; j < arrayLength; j++)
+				{
+					int index = (offset + j) % arrayLength;
+					int multiplicationResult = this.multiplyManagedDelegate(firstArray[index], secondArray[index]);
+					if (add)
+						value += multiplicationResult;
+					else
+						value -= multiplicationResult;
+
+					add = !add;
+				}
+
+				offset++;
 			}
+
 		}
 
 		[Benchmark]
-		public void FunctionPointer()
+		public void ManagedFunctionPointerCall()
 		{
-			int value = 1;
+			var firstArray = new int[] { 23, 87, 51, 98, 29, 75, 93, 48, 24, 83, 47, 38, 62, 22, 97, 15, 52, 41, 74, 13 };
+			var secondArray = firstArray.Reverse().ToArray();
+
+			int arrayLength = firstArray.Length;
+			int value = 0;
+			int offset = 0;
+			bool add = true;
 			for (int i = 0; i < loopCount; i++)
 			{
-				value = this.multiplyPointer(value, 2);
-				if (value > Int32.MaxValue || value < 0)
-					value = 1;
+				for (int j = 0; j < arrayLength; j++)
+				{
+					int index = (offset + j) % arrayLength;
+					int multiplicationResult = this.multiplyManagedPointer(firstArray[index], secondArray[index]);
+					if (add)
+						value += multiplicationResult;
+					else
+						value -= multiplicationResult;
+
+					add = !add;
+				}
+
+				offset++;
 			}
+
 		}
 
 		[Benchmark]
-		public void ManagedDelegate()
+		public void UnmanagedFunctionPointerCall()
 		{
-			int value = 1;
+			var firstArray = new int[] { 23, 87, 51, 98, 29, 75, 93, 48, 24, 83, 47, 38, 62, 22, 97, 15, 52, 41, 74, 13 };
+			var secondArray = firstArray.Reverse().ToArray();
+
+			int arrayLength = firstArray.Length;
+			int value = 0;
+			int offset = 0;
+			bool add = true;
 			for (int i = 0; i < loopCount; i++)
 			{
-				value = this.functionDelegate(value, 2);
-				if (value > Int32.MaxValue || value < 0)
-					value = 1;
+				for (int j = 0; j < arrayLength; j++)
+				{
+					int index = (offset + j) % arrayLength;
+					int multiplicationResult = this.multiplyManagedPointer(firstArray[index], secondArray[index]);
+					if (add)
+						value += multiplicationResult;
+					else
+						value -= multiplicationResult;
+
+					add = !add;
+				}
+
+				offset++;
 			}
+
 		}
 
+
 		[Benchmark]
-		public void DelegateToStaticFunctionPointer()
+		public void ProvideFunctionPointerToNativeFunction()
 		{
-			int value = 1;
-			for (int i = 0; i < loopCount; i++)
-			{
-				value = this.multiplyStaticFunctionPointer(value, 2);
-				if (value > Int32.MaxValue || value < 0)
-					value = 1;
-			}
+			DllImportExample.PerformBenchmarkWithFunctionPointer(loopCount, this.multiplyManagedPointer);
+		}
+
+		private static int Multiply(int arg1, int arg2)
+		{
+			return arg1 * arg2;
+		}
+	}
+
+	public class MultiplyClass
+	{
+		public int Multiply(int arg1, int arg2)
+		{
+			return arg1 * arg2;
 		}
 	}
 }
